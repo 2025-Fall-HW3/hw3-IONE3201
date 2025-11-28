@@ -1,6 +1,7 @@
 """
 Package Import
 """
+from signal import signal
 from unicodedata import name
 import yfinance as yf
 import numpy as np
@@ -99,6 +100,8 @@ class MyPortfolio:
             if (spy_200_ret <= 0) and (spy_vol > 0.25):
                 risk_on = False
 
+            
+
             # =========================
             # 若 risk-off → 防禦模式 A (XLU / XLP)
             # =========================
@@ -158,8 +161,10 @@ class MyPortfolio:
             else:
                 abs_mom_126 = np.zeros(len(assets))
 
+            
             # 組合 alpha：短中期 + 長期絕對動量
             momentum_score = 0.7 * momentum_raw + 0.3 * abs_mom_126
+            
 
             # =========================
             # STEP 3: 用波動做 scaling（reward per unit risk）
@@ -181,27 +186,32 @@ class MyPortfolio:
                     mom_XLK = momentum_score[j]
 
                     if mom_XLK > 0:
-                        growth_boost[j] = 3.0
+                        growth_boost[j] =4.0
                     else:
-                        growth_boost[j] = 1.2
+                        growth_boost[j] = 2.0
                 elif name == "XLC":
                     # 消費選擇、通訊也偏成長，給一點但不要太多
-                    growth_boost[j] = 0.8
+                    growth_boost[j] = 0.6
                 elif name == "XLY":
                     # 消費選擇、通訊也偏成長，給一點但不要太多
                     mom_XLY = momentum_score[j]
                     if mom_XLY > 0:
-                        growth_boost[j] = 1.2
+                        growth_boost[j] = 1.4
                     #growth_boost[j] = 1.2
             mu_scaled *= growth_boost
 
 
+            
 
+            inv_vol = 1 / (vol + 1e-6)
+            inv_vol /= inv_vol.sum()
 
             # =========================
             # STEP 4: 選 Top 3 資產做 MVO
             # =========================
-            top_idx = np.argsort(mu_scaled)[-3:]
+            #top_idx = np.argsort(mu_scaled)[-3:]
+            signal = mu_scaled * inv_vol     # 動量 × 低風險
+            top_idx = np.argsort(signal)[-3:]
             mu_top = mu_scaled[top_idx]
 
             R_top = R_n.iloc[:, top_idx]
